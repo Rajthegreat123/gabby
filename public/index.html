@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock Paper Scissors - Pro Edition</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(to right, #1e3c72, #2a5298);
+            color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        .game-container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+        .choices {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .choices button {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            margin: 0 10px;
+            width: 80px;
+            height: 80px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .choices button:hover {
+            transform: scale(1.1);
+            background: #00c9ff;
+            color: #fff;
+        }
+        .result, .score {
+            font-size: 1.5rem;
+            margin: 15px 0;
+        }
+        .result {
+            font-weight: bold;
+        }
+        footer {
+            margin-top: 30px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>Rock Paper Scissors</h1>
+    <div class="game-container">
+        <div class="choices">
+            <button onclick="handleChoice('rock')">🪨</button>
+            <button onclick="handleChoice('paper')">📄</button>
+            <button onclick="handleChoice('scissors')">✂️</button>
+        </div>
+        <div class="result" id="result">Waiting for opponent...</div>
+        <div class="score" id="score">Score: You 0 - 0 Opponent</div>
+    </div>
+    <footer>
+        Built by Gabriel and Raj
+    </footer>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();  // Connect to the server
+        let playerChoice = null;
+        let opponentChoice = null;
+
+        const resultElement = document.getElementById('result');
+        const scoreElement = document.getElementById('score');
+
+        const choices = ['rock', 'paper', 'scissors'];
+        let playerScore = 0;
+        let opponentScore = 0;
+
+        function handleChoice(choice) {
+            playerChoice = choice;
+            socket.emit('make_move', { choice: playerChoice });
+
+            resultElement.textContent = 'Waiting for opponent to make a move...';
+        }
+
+        socket.on('start_game', () => {
+            resultElement.textContent = 'Make your move!';
+        });
+
+        socket.on('opponent_move', (data) => {
+            opponentChoice = data.choice;
+            const result = determineWinner(playerChoice, opponentChoice);
+            updateScore(result);
+            updateUI(result, playerChoice, opponentChoice);
+        });
+
+        function determineWinner(playerChoice, opponentChoice) {
+            if (playerChoice === opponentChoice) return 'draw';
+            if (
+                (playerChoice === 'rock' && opponentChoice === 'scissors') ||
+                (playerChoice === 'paper' && opponentChoice === 'rock') ||
+                (playerChoice === 'scissors' && opponentChoice === 'paper')
+            ) {
+                return 'player';
+            }
+            return 'opponent';
+        }
+
+        function updateScore(result) {
+            if (result === 'player') {
+                playerScore++;
+            } else if (result === 'opponent') {
+                opponentScore++;
+            }
+            scoreElement.textContent = `Score: You ${playerScore} - ${opponentScore} Opponent`;
+        }
+
+        function updateUI(result, playerChoice, opponentChoice) {
+            const formattedPlayer = formatChoice(playerChoice);
+            const formattedOpponent = formatChoice(opponentChoice);
+            if (result === 'draw') {
+                resultElement.textContent = `🤝 It's a draw! Both chose ${formattedPlayer}.`;
+            } else if (result === 'player') {
+                resultElement.textContent = `🎉 You win! ${formattedPlayer} beats ${formattedOpponent}.`;
+            } else {
+                resultElement.textContent = `😞 You lose! ${formattedOpponent} beats ${formattedPlayer}.`;
+            }
+        }
+
+        function formatChoice(choice) {
+            const icons = {
+                rock: '🪨 Rock',
+                paper: '📄 Paper',
+                scissors: '✂️ Scissors',
+            };
+            return icons[choice] || choice;
+        }
+    </script>
+</body>
+</html>
